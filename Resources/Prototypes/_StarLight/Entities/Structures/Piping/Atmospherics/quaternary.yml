@@ -1,0 +1,27 @@
+- type: entity
+  parent: GasPipeFourway
+  id: StandingTankBasic
+  name: standing tank
+  description: Stores large amounts of gas, but not able to be unanchored.
+  components:
+    - type: Sprite
+      sprite: _Starlight/Structures/Piping/Atmospherics/standingtank.rsi
+      layers:
+        - sprite: Structures/Piping/Atmospherics/pipe.rsi
+          state: pipeTrinaryConnectors
+          map: [ "enum.PipeVisualLayers.Pipe" ]
+        - state: gasFilter
+          map: [ "enum.SubfloorLayers.FirstLayer", "enabled" ]
+    - type: NodeContainer
+      nodes:
+        pipe:
+          !type:PipeNode
+          nodeGroupID: Pipe
+          pipeDirection: Longitudinal
+        filter:
+          !type:PipeNode
+          nodeGroupID: Pipe
+          pipeDirection: West
+    - type: Construction
+      graph: StandingTankStarlight
+      node: stationary_tank

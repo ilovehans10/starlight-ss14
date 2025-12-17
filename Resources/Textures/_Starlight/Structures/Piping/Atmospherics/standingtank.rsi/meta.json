@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "copyright": "Original sprite by ilovehans10",
+  "license": "CC-BY-SA-3.0",
+  "states": [
+    {
+      "name": "standing-tank",
+      "directions": 1
+    }
+  ]
+}
