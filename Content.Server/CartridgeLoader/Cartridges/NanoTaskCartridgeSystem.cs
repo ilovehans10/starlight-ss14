@@ -7,6 +7,8 @@ using Robust.Shared.Audio;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Timing;
 using Robust.Shared.Utility;
+using Content.Shared.Abilities.Mime; // Starlight
+using Content.Server.Popups; // Starlight
 
 namespace Content.Server.CartridgeLoader.Cartridges;
 
@@ -20,6 +22,7 @@ public sealed class NanoTaskCartridgeSystem : SharedNanoTaskCartridgeSystem
     [Dependency] private readonly PaperSystem _paper = default!;
     [Dependency] private readonly SharedAudioSystem _audio = default!;
     [Dependency] private readonly SharedHandsSystem _hands = default!;
+    [Dependency] private readonly PopupSystem _popupSystem = default!; // Starlight
 
     public override void Initialize()
     {
@@ -77,11 +80,11 @@ public sealed class NanoTaskCartridgeSystem : SharedNanoTaskCartridgeSystem
 
         printed.Task = item;
         var msg = new FormattedMessage();
-        msg.AddText(Loc.GetString("nano-task-printed-description", ("description", item.Description)));
+        msg.AddMarkupOrThrow(Loc.GetString("nano-task-printed-description", ("description", FormattedMessage.EscapeText(item.Description))));
         msg.PushNewline();
-        msg.AddText(Loc.GetString("nano-task-printed-requester", ("requester", item.TaskIsFor)));
+        msg.AddMarkupOrThrow(Loc.GetString("nano-task-printed-requester", ("requester", FormattedMessage.EscapeText(item.TaskIsFor))));
         msg.PushNewline();
-        msg.AddText(item.Priority switch {
+        msg.AddMarkupOrThrow(item.Priority switch {
             NanoTaskPriority.High => Loc.GetString("nano-task-printed-high-priority"),
             NanoTaskPriority.Medium => Loc.GetString("nano-task-printed-medium-priority"),
             NanoTaskPriority.Low => Loc.GetString("nano-task-printed-low-priority"),
@@ -129,6 +132,25 @@ public sealed class NanoTaskCartridgeSystem : SharedNanoTaskCartridgeSystem
                     return;
                 if (_timing.CurTime < ent.Comp.NextPrintAllowedAfter)
                     return;
+
+                #region Starlight
+                // allow mimes to print blank NanoTasks (because it's funny)
+                if(TryComp<MimePowersComponent>(args.Actor, out var mime) && !mime.VowBroken)
+                {
+                    // check that the NanoTask is blank
+                    var isBlankNanoTask
+                    = string.IsNullOrWhiteSpace(task.Item.Description)
+                    && string.IsNullOrWhiteSpace(task.Item.TaskIsFor);
+
+                    // if it's not blank, tell the mime they can't do that while their vow is active
+                    if(!isBlankNanoTask)
+                    {
+                        _popupSystem.PopupEntity(Loc.GetString("mime-cant-speak"), args.Actor, args.Actor);
+                        return;
+                    }
+
+                }
+                #endregion Starlight
 
                 ent.Comp.NextPrintAllowedAfter = _timing.CurTime + ent.Comp.PrintDelay;
                 var printed = Spawn("PaperNanoTaskItem", Transform(message.Actor).Coordinates);

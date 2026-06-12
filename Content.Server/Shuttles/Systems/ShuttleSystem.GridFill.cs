@@ -9,8 +9,11 @@ using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Random;
 using Robust.Shared.Utility;
-using Content.Server._Starlight.Station; // Starlight
-using System.Linq; // Starlight
+#region Starlight
+using Content.Server._Starlight.Station;
+using Content.Shared.Random.Helpers;
+using Content.Server._Starlight.Salvage.VGRoid;
+#endregion
 
 namespace Content.Server.Shuttles.Systems;
 
@@ -22,6 +25,7 @@ public sealed partial class ShuttleSystem
         SubscribeLocalEvent<StationCargoShuttleComponent, StationPostInitEvent>(OnCargoSpawnPostInit);
 
         SubscribeLocalEvent<GridFillComponent, MapInitEvent>(OnGridFillMapInit);
+        SubscribeLocalEvent<RandomGridFillComponent, MapInitEvent>(OnRandomGridFillMapInit); // Starlight
 
         Subs.CVar(_cfg, CCVars.GridFill, OnGridFillChange);
     }
@@ -105,29 +109,69 @@ public sealed partial class ShuttleSystem
         }
 
         var targetPhysics = _physicsQuery.Comp(targetGrid);
-        var spawnCoords = new EntityCoordinates(targetGrid, targetPhysics.LocalCenter);
+        // var spawnCoords = new EntityCoordinates(targetGrid, targetPhysics.LocalCenter); // Starlight Edit: Removed
+        // Starlight Start
+        var targetCenterCoords = new EntityCoordinates(targetGrid, targetPhysics.LocalCenter);
+        var spawnCoords = targetCenterCoords;
+        var distancePadding = MathF.Max(targetGrid.Comp.LocalAABB.Width, targetGrid.Comp.LocalAABB.Height);
+        // Starlight End
 
         if (group.MinimumDistance > 0f)
         {
-            var distancePadding = MathF.Max(targetGrid.Comp.LocalAABB.Width, targetGrid.Comp.LocalAABB.Height);
+            // var distancePadding = MathF.Max(targetGrid.Comp.LocalAABB.Width, targetGrid.Comp.LocalAABB.Height); // Starlight Edit: Removed
             spawnCoords = spawnCoords.Offset(_random.NextVector2(distancePadding + group.MinimumDistance, distancePadding + group.MaximumDistance));
         }
 
+        // Starlight Start
+        var spawnMapCoords = _transform.ToMapCoordinates(spawnCoords);
+        var targetCenterMapCoords = _transform.ToMapCoordinates(targetCenterCoords);
+
+        if (group.DirectDungeonSpawn)
+        {
+            var seed = _random.Next();
+            var spawnedGrid = _mapManager.CreateGridEntity(targetCenterMapCoords.MapId);
+
+            _transform.SetMapCoordinates(spawnedGrid, spawnMapCoords);
+            _dungeon.GenerateDungeon(dungeonProto, spawnedGrid.Owner, spawnedGrid.Comp, Vector2i.Zero, seed);
+
+            spawned = spawnedGrid.Owner;
+            return true;
+        }
+        // Starlight End
+
         _mapSystem.CreateMap(out var mapId);
 
-        var spawnedGrid = _mapManager.CreateGridEntity(mapId);
+        var tempSpawnedGrid = _mapManager.CreateGridEntity(mapId); // Starlight Edit: ``spawnedGrid`` -> ``tempSpawnedGrid``
 
-        _transform.SetMapCoordinates(spawnedGrid, new MapCoordinates(Vector2.Zero, mapId));
-        _dungeon.GenerateDungeon(dungeonProto, spawnedGrid.Owner, spawnedGrid.Comp, Vector2i.Zero, _random.Next(), spawnCoords);
+        _transform.SetMapCoordinates(tempSpawnedGrid, new MapCoordinates(Vector2.Zero, mapId)); // Starlight Edit: ``spawnedGrid`` -> ``tempSpawnedGrid``
+        _dungeon.GenerateDungeon(dungeonProto, tempSpawnedGrid.Owner, tempSpawnedGrid.Comp, Vector2i.Zero, _random.Next(), spawnCoords); // Starlight Edit: ``spawnedGrid`` -> ``tempSpawnedGrid``
 
-        spawned = spawnedGrid.Owner;
+        spawned = tempSpawnedGrid.Owner; // Starlight Edit: ``spawnedGrid`` -> ``tempSpawnedGrid``
         return true;
     }
+
+    #region Starlight
+    private void ApplySpawnMarkerConfig(EntityUid spawned, IGridSpawnGroup group)
+    {
+        if (group is not DungeonSpawnGroup dungeon ||
+            !TryComp(spawned, out VGRoidSpawnMarkerComponent? marker))
+        {
+            return;
+        }
+
+        // Keep the validator's expected range sourced from the same data that controls placement.
+        marker.MinimumEdgeDistance = dungeon.MinimumDistance;
+        marker.MaximumEdgeDistance = dungeon.MaximumDistance;
+
+        marker.GenerationComplete = !dungeon.DirectDungeonSpawn;
+        marker.PlacementComplete = !dungeon.DirectDungeonSpawn;
+    }
+    #endregion
 
     private bool TryGridSpawn(EntityUid targetGrid, EntityUid stationUid, MapId mapId, GridSpawnGroup group, out EntityUid spawned)
     {
         spawned = EntityUid.Invalid;
-        
+
         if (group.Paths.Count == 0)
         {
             Log.Error($"Found no paths for GridSpawn");
@@ -192,7 +236,7 @@ public sealed partial class ShuttleSystem
                     break; // can break, we already found the grid that created this station
                 }
             // Starlight end
-            
+
             for (var i = 0; i < count; i++)
             {
                 EntityUid spawned;
@@ -243,6 +287,7 @@ public sealed partial class ShuttleSystem
                 }
 
                 EntityManager.AddComponents(spawned, group.Value.AddComponents); // SL edit
+                ApplySpawnMarkerConfig(spawned, group.Value); // Starlight
             }
         }
 
@@ -306,6 +351,83 @@ public sealed partial class ShuttleSystem
 
         _mapSystem.DeleteMap(mapId);
     }
+
+    // Starlight begin
+    private void OnRandomGridFillMapInit(EntityUid uid, RandomGridFillComponent component, MapInitEvent args)
+    {
+        if (!_cfg.GetCVar(CCVars.GridFill))
+            return;
+
+        if (!TryComp<DockingComponent>(uid, out var dock) ||
+            !TryComp(uid, out TransformComponent? xform) ||
+            xform.GridUid == null)
+        {
+            return;
+        }
+
+        if (component.PathWeights.Count == 0) {
+            Log.Error($"Error loading gridfill dock {ToPrettyString(uid)} due to lacking any PathWeights");
+            return;
+        }
+
+        var untriedGrids = new Dictionary<ResPath, float>(component.PathWeights);
+
+        while (_random.TryPickAndTake(untriedGrids, out var selectedGridPath)) {
+
+            // Spawn on a dummy map and try to dock if possible, otherwise dump it.
+            _mapSystem.CreateMap(out var tempMapId);
+            var valid = false;
+
+            if (_loader.TryLoadGrid(tempMapId, selectedGridPath, out var grid))
+            {
+                var escape = GetSingleDock(grid.Value);
+
+                if (escape != null)
+                {
+                    var config = _dockSystem.GetDockingConfig(grid.Value, xform.GridUid.Value, escape.Value.Entity, escape.Value.Component, uid, dock);
+
+                    if (config != null)
+                    {
+                        var shuttleXform = Transform(grid.Value);
+                        FTLDock((grid.Value, shuttleXform), config);
+
+                        if (TryComp<StationMemberComponent>(xform.GridUid, out var stationMember))
+                        {
+                            _station.AddGridToStation(stationMember.Station, grid.Value);
+                        }
+
+                        valid = true;
+                    }
+                }
+
+                foreach (var compReg in component.AddComponents.Values)
+                {
+                    var compType = compReg.Component.GetType();
+
+                    if (HasComp(grid.Value, compType))
+                        continue;
+
+                    var comp = Factory.GetComponent(compType);
+                    AddComp(grid.Value, comp, true);
+                }
+            }
+            else
+            {
+                Log.Info($"Failed to place {selectedGridPath} for gridfill of dock {ToPrettyString(uid)}, cycling");
+            }
+
+            _mapSystem.DeleteMap(tempMapId);
+
+            if (valid)
+            {
+                return;
+            }
+        }
+
+        Log.Error($"Error placing all possible gridfills for gridfill dock {ToPrettyString(uid)}");
+        DebugTools.Assert($"Error placing all possible gridfills for gridfill dock {ToPrettyString(uid)}");
+    }
+    // Starlight end
 
     private (EntityUid Entity, DockingComponent Component)? GetSingleDock(EntityUid uid)
     {

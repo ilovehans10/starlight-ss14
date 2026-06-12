@@ -4,9 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Content.Server.Body.Systems;
 using Content.Server.Hands.Systems;
-using Content.Server.Starlight.Medical.Surgery;
+using Content.Server._Starlight.Medical.Surgery;
 using Content.Shared._Starlight.Medical.Damage;
 using Content.Shared.Body.Components;
 using Content.Shared.Body.Part;
@@ -27,15 +26,13 @@ using Robust.Shared.Random;
 namespace Content.Server._Starlight.Medical;
 public sealed class LimbDamageSystem : EntitySystem
 {
-    [Dependency] private readonly IRobustRandom _rand = default!;
-    [Dependency] private readonly BodySystem _body = default!;
-    [Dependency] private readonly ContainerSystem _containers = default!;
-    [Dependency] private readonly HandsSystem _hands = default!;
+    //[Dependency] private readonly IRobustRandom _rand = default!;
+    //[Dependency] private readonly BodySystem _body = default!;
+    //[Dependency] private readonly ContainerSystem _containers = default!;
+    //[Dependency] private readonly HandsSystem _hands = default!;
 
     public override void Initialize()
-    {
-        SubscribeLocalEvent<BodyComponent, DamageBeforeApplyEvent>(OnDamage);
-    }
+        => SubscribeLocalEvent<BodyComponent, DamageBeforeApplyEvent>(OnDamage);
     //duct tape solution
     private void OnDamage(Entity<BodyComponent> ent, ref DamageBeforeApplyEvent args)
     {

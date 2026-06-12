@@ -59,7 +59,10 @@
   - type: SentienceTarget
     flavorKind: station-event-random-sentience-flavor-organic
   - type: Bloodstream
-    bloodMaxVolume: 50
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 50
   - type: MeleeWeapon
     soundHit:
         path: /Audio/Effects/bite.ogg
@@ -119,7 +122,7 @@
       0: Alive
       10: Dead
   - type: Stamina
-    critThreshold: 10
+    baseCritThreshold: 10
     animationThreshold: 1
   - type: DamageStateVisuals
     states:
@@ -147,11 +150,10 @@
     - Bee
     - Trash
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: InsectBlood
-        Quantity: 1
-    bloodMaxVolume: 0.1
+        Quantity: 0.1
   - type: MobPrice
     price: 50
   - type: NPCRetaliation
@@ -197,7 +199,10 @@
     factions:
     - SimpleHostile
   - type: Bloodstream
-    bloodMaxVolume: 0.1
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 0.1
   - type: ZombieImmune
 
 
@@ -207,13 +212,19 @@
   id: MobChicken
   description: Comes before an egg, and IS a dinosaur!
   components:
-  # Starlight-start: Languages
+  # Starlight START
   - type: LanguageKnowledge
     speaks:
     - Chicken
     understands:
+    - GalacticCommon
     - Chicken
-  # Starlight-end
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      40: Critical
+      60: Dead
+  # Starlight END
   - type: Sprite
     drawdepth: Mobs
     layers:
@@ -249,6 +260,8 @@
   - type: Reproductive
     breedChance: 0.05
     birthPopup: reproductive-laid-egg-popup
+    capacity: 12  #Starlight
+    hungerPerBirth: 35 #Starlight
     makeOffspringInfant: false
     partnerWhitelist:
       tags:
@@ -278,7 +291,10 @@
     interactSuccessSound:
       path: /Audio/Animals/chicken_cluck_happy.ogg
   - type: Bloodstream
-    bloodMaxVolume: 100
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 100
   - type: EggLayer
     eggSpawn:
     - id: FoodEgg
@@ -288,6 +304,11 @@
   - type: NpcFactionMember
     factions:
     - Passive
+  # Starlight Start
+  - type: HTN
+    rootTask:
+      task: RuminantCompound
+  # Starlight End
 
 - type: entity
   parent: MobChicken
@@ -344,7 +365,6 @@
   parent: FoodEgg
   suffix: Fertilized, Chicken
   components:
-  - type: Timer
   - type: TimedSpawner
     prototypes:
     - MobChicken
@@ -353,8 +373,9 @@
     intervalSeconds: 20
     minimumEntitiesSpawned: 1
     maximumEntitiesSpawned: 1
-  - type: TimedDespawn #delete the egg after the chicken spawns
-    lifetime: 21
+    despawnWhenDone: true # Starlight-edit
+#  - type: TimedDespawn Starlight-edit #delete the egg after the chicken spawns
+#    lifetime: 21
 
 - type: entity
   name: cockroach
@@ -404,11 +425,10 @@
       Dead:
         Base: cockroach_dead
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: InsectBlood
-        Quantity: 1
-    bloodMaxVolume: 20
+        Quantity: 20
   - type: Edible
   - type: FlavorProfile
     flavors:
@@ -495,7 +515,7 @@
 
 - type: entity
   name: mothroach
-  parent: MobCockroach
+  parent: MobCockroach # Starlight Edit: Removed BaseMobMothroach
   id: MobMothroach
   description: This is the adorable by-product of multiple attempts at genetically mixing mothpeople with cockroaches.
   components:
@@ -504,6 +524,7 @@
     speaks:
     - Mothroach
     understands:
+    - GalacticCommon
     - Moffic
     - Mothroach
   # Starlight-end
@@ -519,7 +540,7 @@
     description: ghost-role-information-mothroach-description
     rules: ghost-role-information-freeagent-rules
     mindRoles:
-    - MindRoleGhostRoleFreeAgentHarmless
+    - MindRoleGhostRoleCritterHarmless # Starlight-edit - FreeAgentHarmless -> CritterHarmless
   - type: Fixtures
     fixtures:
       fix1:
@@ -583,10 +604,10 @@
     damageContainer: Biological
     damageModifierSet: Moth
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: InsectBlood
-        Quantity: 1
+        Quantity: 20
   - type: Respirator
     damage:
       types:
@@ -620,8 +641,10 @@
   - type: NpcFactionMember
     factions:
     - Mouse
+  # Starlight - start
   - type: Body
     prototype: Mothroach
+  # Starlight - end
   - type: TypingIndicator
     proto: moth
   - type: Destructible
@@ -643,6 +666,7 @@
         type: StrippableBoundUserInterface
   - type: InventorySlots
   - type: Inventory
+    forceDisplacements: true # SL
     speciesId: hamster
     templateId: hamster
     displacements:
@@ -682,13 +706,19 @@
   id: MobDuckMallard
   description: An adorable mallard duck, it's fluffy and soft!
   components:
-  # Starlight-start: Languages
+  # Starlight START
   - type: LanguageKnowledge
     speaks:
     - Duck
     understands:
+    - GalacticCommon
     - Duck
-  # Starlight-end
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      40: Critical
+      60: Dead
+  # Starlight END
   - type: Sprite
     drawdepth: Mobs
     layers:
@@ -714,6 +744,8 @@
   - type: Reproductive
     breedChance: 0.05
     birthPopup: reproductive-laid-egg-popup
+    capacity: 12  #Starlight
+    hungerPerBirth: 35 #Starlight
     makeOffspringInfant: false
     partnerWhitelist:
       tags:
@@ -743,7 +775,10 @@
     interactSuccessSound:
       path: /Audio/Animals/duck_quack_happy.ogg
   - type: Bloodstream
-    bloodMaxVolume: 100
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 100
   - type: EggLayer
     eggSpawn:
     - id: FoodEgg
@@ -797,7 +832,6 @@
   parent: FoodEgg
   suffix: Fertilized, Duck
   components:
-    - type: Timer
     - type: TimedSpawner
       prototypes:
       - MobDuckMallard
@@ -806,8 +840,9 @@
       intervalSeconds: 20
       minimumEntitiesSpawned: 1
       maximumEntitiesSpawned: 1
-    - type: TimedDespawn #delete the egg after the chicken spawns
-      lifetime: 21
+      despawnWhenDone: true # Starlight-edit: delete the egg after the duck spawns
+    #- type: TimedDespawn Starlight-edit
+    #  lifetime: 21
 
 - type: entity
   name: butterfly
@@ -869,11 +904,10 @@
     tags:
     - Trash
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: InsectBlood
-        Quantity: 1
-    bloodMaxVolume: 0.1
+        Quantity: 0.1
   - type: MobPrice
     price: 50
   - type: Destructible
@@ -889,7 +923,7 @@
 
 - type: entity
   name: cow
-  parent: SimpleMobBase
+  parent: SimpleMobBase # Starlight Edit: Removed BaseMobRuminant
   id: MobCow
   description: Moo.
   components:
@@ -962,8 +996,10 @@
   - type: NpcFactionMember
     factions:
     - Passive
+  # Starlight - start
   - type: Body
     prototype: AnimalRuminant
+  # Starlight - end
   - type: HTN
     rootTask:
       task: RuminantCompound
@@ -974,10 +1010,17 @@
 
 - type: entity
   name: crab
-  parent: SimpleMobBase
+  parent: SimpleMobBase # Starlight Edit: Removed BaseMobHemocyanin
   id: MobCrab
   description: A folk legend goes around that his claw snaps spacemen out of existence over distasteful remarks. Be polite and tolerant for your own safety.
   components:
+  # Starlight START
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      40: Critical
+      60: Dead
+  # Starlight END
   - type: VentCrawler
   - type: Sprite
     drawdepth: Mobs
@@ -1030,23 +1073,24 @@
   - type: ReplacementAccent
     accent: crab
   - type: Bloodstream
-    bloodMaxVolume: 50
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: CopperBlood
-        Quantity: 1
+        Quantity: 50
   - type: Tag
     tags:
     - VimPilot
   - type: HTN
     rootTask:
       task: RuminantCompound
+  # Starlight - start
   - type: Body
     prototype: AnimalHemocyanin
+  # Starlight - end
 
 - type: entity
   name: goat
-  parent: SimpleMobBase
+  parent: SimpleMobBase # Starlight Edit: Removed BaseMobRuminant
   id: MobGoat
   description: Her spine consists of long sharp segments, no wonder she is so grumpy.
   components:
@@ -1138,8 +1182,10 @@
   - type: NpcFactionMember
     factions:
     - Passive
+  # Starlight - start
   - type: Body
     prototype: AnimalRuminant
+  # Starlight - end
   - type: NPCRetaliation
     attackMemoryLength: 5
   - type: FactionException
@@ -1191,7 +1237,10 @@
     interactSuccessSound:
       path: /Audio/Animals/goose_honk.ogg
   - type: Bloodstream
-    bloodMaxVolume: 100
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 100
   - type: NpcFactionMember
     factions:
     - Passive
@@ -1292,7 +1341,7 @@
 - type: entity
   name: genetic ancestor
   id: MobBaseAncestor
-  parent: [SimpleMobBase, StripableInventoryBase]
+  parent: [SimpleMobBase, StripableInventoryBase] # Starlight Edit: Removed BaseMobAnimal
   description: The genetic bipedal ancestor of... Uh... Something. Yeah, there's definitely something on the station that descended from whatever this is.
   abstract: true
   components:
@@ -1301,14 +1350,22 @@
     speaks:
     - Ancestor
     understands:
+    - GalacticCommon
     - Ancestor
   # Starlight-end
-  - type: VentCrawler # Starlight-edit: Vent Crawl
   - type: CombatMode
     canDisarm: true
   - type: Inventory
     templateId: monkey
     speciesId: monkey
+  # Starlight Start
+    displacements:
+      jumpsuit:
+        sizeMaps:
+          32:
+            sprite: _Starlight/Mobs/Animals/displacements.rsi
+            state: jumpsuit-monkey
+  # Starlight End
   - type: Deathgasp
     prototype: MonkeyDeathgasp
   - type: Cuffable
@@ -1349,6 +1406,12 @@
       state: "creampie_human"
       visible: false
   - type: Hands
+    # Starlight edit Start: Reverted NuBody
+    # activeHandId: Hand
+    # hands:
+    #   Hand:
+    #     location: Left
+    # Starlight edit End: Reverted NuBody
   - type: ComplexInteraction
   - type: GenericVisualizer
     visuals:
@@ -1356,9 +1419,11 @@
         clownedon:
           True: {visible: true}
           False: {visible: false}
+  # Starlight - start
   - type: Body
     prototype: Primate
     requiredLegs: 1 # TODO: More than 1 leg
+  # Starlight - end
   - type: CreamPied
   - type: FireVisuals
     sprite: Mobs/Effects/onfire.rsi
@@ -1386,6 +1451,8 @@
     spawned:
     - id: FoodMeat
       amount: 3
+  - type: Puller
+    needsHands: false
   - type: CanHostGuardian
   - type: NPCRetaliation
     attackMemoryLength: 10
@@ -1413,8 +1480,7 @@
       - !type:WashCreamPie
   - type: Crawler
   - type: StatusIcon
-
-
+  - type: CosmicCenserTarget # Stellar - Cosmic Cult
 
 - type: entity
   name: monkey
@@ -1427,6 +1493,7 @@
   - type: Speech
     speechSounds: Monkey
     speechVerb: Monkey
+  - type: VentCrawler # Starlight
   - type: SentienceTarget
     flavorKind: station-event-random-sentience-flavor-primate
   - type: AlwaysRevolutionaryConvertible
@@ -1448,6 +1515,14 @@
         Blunt: 1
     clumsySound:
       path: /Audio/Animals/monkey_scream.ogg
+# Starlight - Begin
+  - type: Tag
+    tags:
+      - Monkey
+
+- type: Tag
+  id: Monkey
+# Starlight - End
 
 
 - type: entity
@@ -1465,6 +1540,7 @@
     understands:
     - Ancestor
     - GalacticCommon
+  - type: VentCrawler # Starlight
   # Starlight-End
   - type: NameIdentifier
     group: Monkey
@@ -1473,7 +1549,6 @@
   - type: Speech
     speechSounds: Monkey
     speechVerb: Monkey
-  - type: MonkeyAccent
   - type: NpcFactionMember
     factions:
     - Syndicate
@@ -1483,6 +1558,7 @@
     name: ghost-role-information-monkey-name
     description: ghost-role-information-monkey-description
     rules: ghost-role-information-syndicate-reinforcement-rules
+    important: true # SL
     mindRoles:
     # This is for syndicate monkeys that randomly gain sentience, thus have no summoner to team with
     - MindRoleGhostRoleSoloAntagonist
@@ -1498,7 +1574,6 @@
   suffix: syndicate agent
   components:
     # make the player a traitor once its taken
-  - type: VentCrawler
   # Starlight-Start
   - type: LanguageSpeaker
   - type: LanguageKnowledge
@@ -1516,7 +1591,6 @@
   parent: MobBaseSyndicateMonkey
   suffix: NukeOps
   components:
-  - type: VentCrawler
   # Starlight-Start
   - type: LanguageSpeaker
   - type: LanguageKnowledge
@@ -1541,6 +1615,7 @@
     - Ancestor
     - Draconic
     understands:
+    - GalacticCommon
     - Ancestor
     - Draconic
   # Starlight-end
@@ -1587,10 +1662,11 @@
         Slash: 5
         Piercing: 4
   - type: Temperature
-    heatDamageThreshold: 360
-    coldDamageThreshold: 285
     currentTemperature: 310.15
     specificHeat: 42
+  - type: TemperatureDamage
+    heatDamageThreshold: 360
+    coldDamageThreshold: 285
   - type: Sprite
     drawdepth: Mobs
     layers:
@@ -1647,6 +1723,15 @@
     name: ghost-role-information-kobold-name
     description: ghost-role-information-kobold-description
     rules: ghost-role-information-nonantagonist-rules
+  # Starlight Start
+  - type: Inventory
+    displacements:
+      jumpsuit:
+        sizeMaps:
+          32:
+            sprite: _Starlight/Mobs/Animals/displacements.rsi
+            state: jumpsuit-kobold
+  # Starlight End
 
 - type: entity
   name: kobold
@@ -1654,6 +1739,7 @@
   parent: MobBaseKobold
   description: Cousins to the sentient race of lizard people, kobolds blend in with their natural habitat and are as nasty as monkeys; ready to pull out your hair and stab you to death.
   components:
+  - type: VentCrawler # Starlight
   - type: Clumsy
     gunShootFailDamage:
       types:
@@ -1681,6 +1767,7 @@
     - Ancestor
     - Draconic
     - GalacticCommon
+  - type: VentCrawler
   # Starlight-End
   - type: MobThresholds
     thresholds:
@@ -1698,15 +1785,6 @@
   parent: MobBaseSyndicateKobold
   suffix: syndicate agent
   components:
-  # Starlight-Start
-  - type: LanguageSpeaker
-  - type: LanguageKnowledge
-    speaks:
-    - Ancestor
-    understands:
-    - Ancestor
-    - GalacticCommon
-  # Starlight-End
     # make the player a traitor once its taken
   - type: AutoTraitor
     profile: TraitorReinforcement
@@ -1716,15 +1794,6 @@
   parent: MobBaseSyndicateKobold
   suffix: NukeOps
   components:
-  # Starlight-Start
-  - type: LanguageSpeaker
-  - type: LanguageKnowledge
-    speaks:
-    - Ancestor
-    understands:
-    - Ancestor
-    - GalacticCommon
-  # Starlight-End
   - type: NukeOperative
 
 - type: entity
@@ -1738,20 +1807,23 @@
 
 - type: entity
   name: mouse
-  parent: SimpleMobBase
+  parent:
+  - SimpleMobBase
+  # - BaseMobAnimal # Starlight Edit: Revert NuBody
   id: MobMouse
   description: Squeak!
   components:
-  # Starlight-start: Languages
+  # Starlight Start
   - type: LanguageKnowledge
     speaks:
     - Mouse
     understands:
+    - GalacticCommon
     - Mouse
-  # Starlight-end
-  - type: VentCrawler # Starlight-edit: Vent Crawl
+  - type: VentCrawler
   - type: Body
     prototype: Mouse
+  # Starlight End
   - type: GhostRole
     makeSentient: true
     allowSpeech: true
@@ -1760,7 +1832,7 @@
     description: ghost-role-information-mouse-description
     rules: ghost-role-information-freeagent-rules
     mindRoles:
-    - MindRoleGhostRoleFreeAgentHarmless
+    - MindRoleGhostRoleCritterHarmless # Starlight-edit - FreeAgentHarmless -> CritterHarmless
   - type: GhostTakeoverAvailable
   - type: Speech
     speechSounds: Squeak
@@ -1768,7 +1840,7 @@
     allowedEmotes: ['Squeak']
   - type: Sprite
     drawdepth: SmallMobs
-    sprite: Mobs/Animals/mouse.rsi
+    sprite: _Starlight/Mobs/Animals/mouse.rsi
     layers:
     - map: ["enum.DamageStateVisualLayers.Base", "movement"]
       state: mouse-0
@@ -1782,9 +1854,10 @@
   - type: Item
     size: Tiny
     heldPrefix: 0
+  - type: VampireDevourable # Starlight-edit: Vampire Devouring
   - type: Clothing
     quickEquip: false
-    sprite: Mobs/Animals/mouse.rsi
+    sprite: _Starlight/Mobs/Animals/mouse.rsi #SL Edit
     equippedPrefix: 0
     slots:
     - HEAD
@@ -1832,7 +1905,7 @@
       Critical:
         Base: dead-0
       Dead:
-        Base: splat-0
+        Base: splat-0 #SLEdit
   - type: Edible
   - type: FlavorProfile
     flavors:
@@ -1901,7 +1974,10 @@
       types:
         Piercing: 0
   - type: Bloodstream
-    bloodMaxVolume: 50
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 50
   - type: CanEscapeInventory
   - type: MobPrice
     price: 50
@@ -1981,7 +2057,7 @@
       Critical:
         Base: dead-1
       Dead:
-        Base: splat-1
+        Base: splat-1 #SLEdit
   - type: Item
     size: Tiny
     heldPrefix: 1
@@ -1991,26 +2067,27 @@
   id: MobMouse2
   components:
   - type: Sprite
+    #color: Gray #SL Edit
     layers:
     - map: ["enum.DamageStateVisualLayers.Base", "movement"]
-      state: mouse-2
+      state: mouse-2 #SLEdit
   - type: SpriteMovement
     movementLayers:
       movement:
-        state: mouse-moving-2
+        state: mouse-moving-2 #SLEdit
     noMovementLayers:
       movement:
-        state: mouse-2
+        state: mouse-2 #SLEdit
   - type: Clothing
     equippedPrefix: 2
   - type: DamageStateVisuals
     states:
       Alive:
-        Base: mouse-2
+        Base: mouse-2 #SLEdit
       Critical:
-        Base: dead-2
+        Base: dead-2 #SLEdit
       Dead:
-        Base: splat-2
+        Base: splat-2 #SLEdit
   - type: Item
     size: Tiny
     heldPrefix: 2
@@ -2035,12 +2112,13 @@
     energy: 5
     netsync: false
   - type: RadiationSource
-    intensity: 0.3
+    intensity: 0.5
+    slope: 0.3
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: UnstableMutagen
-        Quantity: 1
+        Quantity: 50
   - type: SolutionContainerManager
     solutions:
       food:
@@ -2106,7 +2184,10 @@
     interactSuccessSound:
       path: /Audio/Animals/lizard_happy.ogg
   - type: Bloodstream
-    bloodMaxVolume: 150
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 150
   - type: Damageable
     damageContainer: Biological
     damageModifierSet: Scale
@@ -2161,7 +2242,10 @@
     interactFailureString: petting-failure-generic
     interactSuccessSpawn: EffectHearts
   - type: Bloodstream
-    bloodMaxVolume: 50
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 50
 
 - type: entity
   name: frog
@@ -2218,7 +2302,10 @@
     interactSuccessSound:
       path: /Audio/Animals/frog_ribbit.ogg
   - type: Bloodstream
-    bloodMaxVolume: 50
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 50
   - type: Tag
     tags:
     - VimPilot
@@ -2309,7 +2396,10 @@
     interactSuccessSound:
       path: /Audio/Animals/parrot_raught.ogg
   - type: Bloodstream
-    bloodMaxVolume: 50
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 50
 
 - type: entity
   parent: MobParrotBase
@@ -2367,10 +2457,11 @@
     factions:
     - Passive
   - type: Temperature
-    heatDamageThreshold: 335
-    coldDamageThreshold: 230
     currentTemperature: 310.15
     specificHeat: 46
+  - type: TemperatureDamage
+    heatDamageThreshold: 335
+    coldDamageThreshold: 230
     coldDamage:
       types:
         Cold : 0.05 #per second, scales with temperature & other constants
@@ -2498,7 +2589,10 @@
     interactFailureString: petting-failure-generic
     interactSuccessSpawn: EffectHearts
   - type: Bloodstream
-    bloodMaxVolume: 50
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 50
   - type: Damageable
     damageContainer: Biological
     damageModifierSet: Scale
@@ -2506,7 +2600,7 @@
 # Code unique spider prototypes or combine them all into one spider and get a
 # random sprite state when you spawn it.
 - type: entity
-  parent: [ SimpleMobBase, MobCombat ]
+  parent: [ SimpleMobBase, MobCombat ] # Starlight Edit: Removed BaseMobHemocyanin
   id: MobSpiderBase
   abstract: true
   components:
@@ -2515,6 +2609,7 @@
     speaks:
     - Chittin
     understands:
+    - GalacticCommon
     - Chittin
   # Starlight-end
   - type: VentCrawler # Starlight-edit: Vent Crawl
@@ -2535,8 +2630,10 @@
     - id: FoodMeatSpider
       amount: 2
   - type: CombatMode
+  # Starlight - start
   - type: Body
     prototype: AnimalHemocyanin
+  # Starlight - end
   - type: MobThresholds
     thresholds:
       0: Alive
@@ -2567,11 +2664,10 @@
   - type: Spider
   - type: IgnoreSpiderWeb
   - type: Bloodstream
-    bloodMaxVolume: 150
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: CopperBlood
-        Quantity: 1
+        Quantity: 150
   - type: Speech
     speechVerb: Arachnid
     speechSounds: Arachnid
@@ -2634,12 +2730,23 @@
   id: MobGiantSpider
   description: Widely recognized to be the literal worst thing in existence.
   components:
-  - type: Sprite
-    drawdepth: Mobs
-    layers:
-    - map: ["enum.DamageStateVisualLayers.Base", "movement"]
-      state: tarantula
-      sprite: Mobs/Animals/spider.rsi
+  # 🌟Starlight🌟 start
+  - type: OptionsVisualizer
+    visuals:
+      base:
+        - options: Default
+          data:
+            drawdepth: Mobs
+            sprite: Mobs/Animals/spider.rsi
+            map: ["enum.DamageStateVisualLayers.Base", "movement"]
+            state: tarantula
+        - options: Arachnophobia
+          data:
+            drawdepth: Mobs
+            sprite: _Starlight/Mobs/Animals/Spiders/Arachnophobia/spider.rsi
+            map: ["enum.DamageStateVisualLayers.Base", "movement"]
+            state: tarantula
+  # 🌟Starlight🌟 end
   - type: SpriteMovement
     movementLayers:
       movement:
@@ -2677,12 +2784,23 @@
   id: MobClownSpider
   description: Combines the two most terrifying things in existence, spiders and clowns.
   components:
-    - type: Sprite
-      drawdepth: Mobs
-      layers:
-      - map: ["enum.DamageStateVisualLayers.Base"]
-        state: clown
-        sprite: Mobs/Animals/clownspider.rsi
+  # 🌟Starlight🌟 start
+    - type: OptionsVisualizer
+      visuals:
+        base:
+          - options: Default
+            data:
+              drawdepth: Mobs
+              sprite: Mobs/Animals/clownspider.rsi
+              map: ["enum.DamageStateVisualLayers.Base", "movement"]
+              state: clown
+          - options: Arachnophobia
+            data:
+              drawdepth: Mobs
+              sprite: _Starlight/Mobs/Animals/Spiders/Arachnophobia/clownspider.rsi
+              map: ["enum.DamageStateVisualLayers.Base", "movement"]
+              state: clown
+  # 🌟Starlight🌟 end
     - type: Butcherable
       spawned:
         - id: MaterialBananium1
@@ -2723,11 +2841,10 @@
     - type: Speech
       speechVerb: Cluwne
     - type: Bloodstream
-      bloodMaxVolume: 150
-      bloodReagents:
+      bloodReferenceSolution:
         reagents:
         - ReagentId: Laughter
-          Quantity: 1
+          Quantity: 150
 - type: entity
   name: wizard spider
   parent: MobGiantSpider
@@ -2876,6 +2993,7 @@
     speaks:
     - Fox
     understands:
+    - GalacticCommon
     - Fox
     - Canilunzt
   # Starlight-end
@@ -2930,7 +3048,10 @@
     attributes:
       gender: epicene
   - type: Bloodstream
-    bloodMaxVolume: 100
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 100
   - type: MeleeWeapon
     angle: 0
     animation: WeaponArcBite
@@ -2971,6 +3092,14 @@
   - type: Speech
     speechVerb: Canine
     speechSounds: Dog
+  # Starlight Start
+    allowedEmotes: [ 'Bark', 'Snarl', 'Whine', 'Howl', 'Growl', 'Yip' ]
+  - type: Vocal
+    sounds:
+      Male: Dog
+      Female: Dog
+      Unsexed: Dog
+  # Starlight End
   - type: Fixtures
     fixtures:
       fix1:
@@ -2999,7 +3128,28 @@
   - type: MessyDrinker
   - type: Puller
     needsHands: false
-  - type: Blindable # Starlight - why is this not base?
+  # Starlight Start
+    pullingAlert: CorgiPulling
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      100: Critical
+      200: Dead
+    stateAlertDict:
+      Alive: CorgiHealth
+      Critical: CorgiCrit
+      Dead: CorgiDead
+  - type: Blindable # why is this not base?
+  - type: Emoting
+  - type: ThermalRegulator # Lower radiated heat, Corgis are smaller so their body surface area is also smaller.
+    metabolismHeat: 400 # half of human's
+    radiatedHeat: 35 # This affects them reallistically only when dead in a spaced room, makes the cold damage scale slower.
+    implicitHeatRegulation: 250 # Add implicit heat regulation because they lacked it for some reason
+    sweatHeatRegulation: 500 # Allow corgis to sweat, i dont know if dogs sweat but i am not implementing a different way of regulation just for them
+    shiveringHeatRegulation: 500 # Allow corgis to shiver to warm up
+    normalBodyTemperature: 310.15 # Same as human
+    thermalRegulationTemperatureThreshold: 2 # Same as human
+  # Starlight End
 
 - type: entity
   parent: MobCorgiBase
@@ -3010,6 +3160,7 @@
     speaks:
     - Dog
     understands:
+    - GalacticCommon
     - Dog
     - Canilunzt
   # Starlight-end
@@ -3030,6 +3181,7 @@
   - type: Tag
     tags:
     - VimPilot
+    - DogEmotes # Starlight
 
 - type: entity
   name: corrupted corgi
@@ -3045,6 +3197,7 @@
     understands:
     - Dog
     - GalacticCommon
+    - Canilunzt
   # Starlight End
   - type: Sprite
     drawdepth: Mobs
@@ -3085,21 +3238,22 @@
     attributes:
       gender: epicene
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: DemonsBlood
-        Quantity: 1
+        Quantity: 150
   - type: Damageable
     damageContainer: BiologicalMetaphysical
     damageModifierSet: Infernal
   - type: Temperature
+    currentTemperature: 310.15
+    specificHeat: 42
+  - type: TemperatureDamage
     heatDamageThreshold: 4000 #They come from hell, so..
     coldDamageThreshold: 260
-    currentTemperature: 310.15
     coldDamage:
       types:
         Cold : 1 #per second, scales with temperature & other constants
-    specificHeat: 42
     heatDamage:
       types:
         Heat : 1 #per second, scales with temperature & other constants
@@ -3143,6 +3297,7 @@
     speaks:
     - Cat
     understands:
+    - GalacticCommon
     - Cat
     - Nekomimetic
   # Starlight-end
@@ -3263,6 +3418,7 @@
     allowMovement: true
     description: ghost-role-information-SyndiCat-description
     rules: ghost-role-information-SyndiCat-rules
+    important: true # SL
     mindRoles:
     - MindRoleGhostRoleTeamAntagonist
     raffle:
@@ -3311,6 +3467,7 @@
       Dead:
         Base: spacecat_dead
   - type: Temperature
+  - type: TemperatureDamage
     heatDamageThreshold: 423
     coldDamageThreshold: 0
   - type: Tag
@@ -3507,6 +3664,7 @@
     speaks:
     - Mouse
     understands:
+    - GalacticCommon
     - Mouse
   # Starlight-end
   - type: VentCrawler # Starlight-edit: Vent Crawl
@@ -3635,7 +3793,10 @@
     interactSuccessSound:
       path: /Audio/Animals/fox_squeak.ogg
   - type: Bloodstream
-    bloodMaxVolume: 60
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 60
   - type: CanEscapeInventory
     baseResistTime: 3
   - type: MobPrice
@@ -3665,6 +3826,7 @@
     speaks:
     - Pig
     understands:
+    - GalacticCommon
     - Pig
   # Starlight-end
   - type: Sprite
@@ -3732,7 +3894,7 @@
 
 - type: entity
   name: diona nymph
-  parent: [SimpleMobBase, StripableInventoryBase]
+  parent: [SimpleMobBase, StripableInventoryBase] # Starlight Edit: Removed BaseMobAnimal
   id: MobDionaNymph
   description: It's like a cat, only.... branch-ier.
   components:
@@ -3741,6 +3903,7 @@
     speaks:
     - Sylvan
     understands:
+    - GalacticCommon
     - Sylvan
   # Starlight-end
   - type: Sprite
@@ -3765,11 +3928,10 @@
     speciesId: cat
     templateId: pet
   - type: Bloodstream
-    bloodReagents:
+    bloodReferenceSolution:
       reagents:
       - ReagentId: Sap
-        Quantity: 1
-    bloodMaxVolume: 60
+        Quantity: 60
   - type: DamageStateVisuals
     states:
       Alive:
@@ -3831,6 +3993,7 @@
     speaks:
     - Sylvan
     understands:
+    - GalacticCommon
     - Sylvan
   # Starlight-end
 
@@ -3878,7 +4041,10 @@
     - id: FoodMeat
       amount: 4
   - type: Bloodstream
-    bloodMaxVolume: 300
+    bloodReferenceSolution:
+      reagents:
+      - ReagentId: Blood
+        Quantity: 300
     # Horns though
   - type: MeleeWeapon
     damage:
@@ -3927,7 +4093,7 @@
         Base: reindeer_doe_dead
 
 - type: entity
-  parent: MobCorgiBase
+  parent: MobCorgiBase #starlight Nubody will not pass.
   id: MobCorgiSmart
   name: smart corgi
   description: An unusually smart dog.
@@ -3979,14 +4145,29 @@
             sprite: Mobs/Pets/displacements.rsi
             state: corgi_head_displacement
   - type: Hands # HANDS!
+    # Starlight edit Start: Reverted NuBody
+    # activeHandId: Right
+    # hands:
+    #   Right:
+    #     location: Right
+    #   Left:
+    #     location: Left
+    # Starlight edit End: Reverted NuBody
   - type: Puller
   - type: Cuffable # bad dog!
   - type: BlockWriting # dogs can't write, paws unwieldy; mouth-writing is a myth
   - type: Stripping
   - type: ComplexInteraction
+  - type: Dna # Starlight
+  - type: Fingerprint # Starlight
   # Implement custom borgi body type
+  # Starlight - start
   - type: Body
     prototype: SmartCorgi
+  - type: RandomMetadata
+    nameSegments:
+    - NamesCorgi
+  # Starlight - end
   - type: RotationVisuals
     defaultRotation: 90
     horizontalRotation: 180
@@ -3999,9 +4180,13 @@
     - VimPilot
     - CanPilot
     - DoorBumpOpener
+    - DogEmotes # Starlight
   - type: StatusIcon # marks them as crew
     bounds: -0.5,-0.5,0.5,0.5
   - type: NpcFactionMember
     factions:
     - NanoTrasen
+    # Starlight Start
   - type: AlwaysRevolutionaryConvertible
+  - type: CanEnterCryostorage
+    # Starlight End

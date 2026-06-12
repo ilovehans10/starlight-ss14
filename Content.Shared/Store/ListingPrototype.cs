@@ -31,6 +31,7 @@ public partial class ListingData : IEquatable<ListingData>
         other.Priority,
         other.ProductEntity,
         other.ProductAction,
+        other.ProductLanguage, //Starlight
         other.ProductUpgradeId,
         other.ProductActionEntity,
         other.ProductEvent,
@@ -42,7 +43,8 @@ public partial class ListingData : IEquatable<ListingData>
         other.RestockTime,
         other.DiscountDownTo,
         other.DisableRefund,
-        other.ApplyToMob
+        other.ApplyToMob, // Starlight comma
+        other.DestockTime // Starlight
     )
     {
 
@@ -57,6 +59,7 @@ public partial class ListingData : IEquatable<ListingData>
         int priority,
         EntProtoId? productEntity,
         EntProtoId? productAction,
+        string? productLanguage, //Starlight
         ProtoId<ListingPrototype>? productUpgradeId,
         EntityUid? productActionEntity,
         object? productEvent,
@@ -68,7 +71,8 @@ public partial class ListingData : IEquatable<ListingData>
         TimeSpan restockTime,
         Dictionary<ProtoId<CurrencyPrototype>, FixedPoint2> dataDiscountDownTo,
         bool disableRefund,
-        bool applyToMob
+        bool applyToMob, //Starlight comma
+        TimeSpan destockTime //Starlight
     )
     {
         Name = name;
@@ -79,6 +83,7 @@ public partial class ListingData : IEquatable<ListingData>
         Priority = priority;
         ProductEntity = productEntity;
         ProductAction = productAction;
+        ProductLanguage = productLanguage; //Starlight
         ProductUpgradeId = productUpgradeId;
         ProductActionEntity = productActionEntity;
         ProductEvent = productEvent;
@@ -91,6 +96,7 @@ public partial class ListingData : IEquatable<ListingData>
         DiscountDownTo = new Dictionary<ProtoId<CurrencyPrototype>, FixedPoint2>(dataDiscountDownTo);
         DisableRefund = disableRefund;
         ApplyToMob = applyToMob;
+        DestockTime = destockTime; //Starlight
     }
 
     [ViewVariables]
@@ -161,6 +167,12 @@ public partial class ListingData : IEquatable<ListingData>
     public EntProtoId? ProductAction;
 
     /// <summary>
+    /// The language that is given when the listing is purchased.
+    /// </summary>
+    [DataField]
+    public string? ProductLanguage; //Starlight
+
+    /// <summary>
     /// The listing ID of the related upgrade listing. Can be used to link a <see cref="ProductAction"/> to an
     /// upgrade or to use standalone as an upgrade
     /// </summary>
@@ -214,11 +226,18 @@ public partial class ListingData : IEquatable<ListingData>
     [DataField]
     public bool Unavailable = false;
 
-	/// <summary>
+    /// <summary>
     /// Whether or not to apply the store listing to the player mob rather than the player mind.
     /// </summary>
     [DataField]
     public bool ApplyToMob = false;
+    #region Starlight
+    /// <summary>
+    /// Used to restrict purchase of some items after some time has passed.
+    /// </summary>
+    [DataField]
+    public TimeSpan DestockTime = TimeSpan.Zero;
+    #endregion
 
     public bool Equals(ListingData? listing)
     {
@@ -231,10 +250,12 @@ public partial class ListingData : IEquatable<ListingData>
             Description != listing.Description ||
             ProductEntity != listing.ProductEntity ||
             ProductAction != listing.ProductAction ||
+            ProductLanguage != listing.ProductLanguage || // Starlight
             ProductEvent?.GetType() != listing.ProductEvent?.GetType() ||
             RestockTime != listing.RestockTime ||
             DisableRefund != listing.DisableRefund ||
-            ApplyToMob != listing.ApplyToMob)
+            ApplyToMob != listing.ApplyToMob || // Starlight OR
+            DestockTime != listing.DestockTime) // Starlight
             return false;
 
         if (Icon != null && !Icon.Equals(listing.Icon))
@@ -305,6 +326,7 @@ public sealed partial class ListingDataWithCostModifiers : ListingData
             listingData.Priority,
             listingData.ProductEntity,
             listingData.ProductAction,
+            listingData.ProductLanguage, //Starlight
             listingData.ProductUpgradeId,
             listingData.ProductActionEntity,
             listingData.ProductEvent,
@@ -316,7 +338,8 @@ public sealed partial class ListingDataWithCostModifiers : ListingData
             listingData.RestockTime,
             listingData.DiscountDownTo,
             listingData.DisableRefund,
-            listingData.ApplyToMob
+            listingData.ApplyToMob, // Starlight comma
+            listingData.DestockTime // Starlight
         )
     {
     }

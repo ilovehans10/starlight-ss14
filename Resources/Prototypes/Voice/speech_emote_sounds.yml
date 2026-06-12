@@ -348,6 +348,8 @@
       path: /Audio/Voice/Vox/shriek1.ogg
     Laugh:
       path: /Audio/Voice/Vox/vox_laugh.ogg
+    Sneeze:
+      path: /Audio/Voice/Vox/vox_sneeze.ogg
     Cough:
       path: /Audio/Voice/Vox/vox_cough.ogg
     Sigh:
@@ -379,6 +381,8 @@
       path: /Audio/Voice/Diona/diona_scream.ogg
     Laugh:
       collection: DionaLaugh
+    Sneeze:
+      collection: DionaSneeze
     Chirp:
       path: /Audio/Animals/nymph_chirp.ogg
     Honk:
@@ -593,52 +597,6 @@
       path: /Audio/Effects/Cargo/ping.ogg
 
 - type: emoteSounds
-  id: UnisexResomi
-  params:
-    variation: 0.125
-  sounds:
-    Scream:
-      path: /Audio/Voice/Resomi/resomi_scream.ogg
-    Laugh:
-      collection: ResomiLaugh
-    Honk:
-      collection: BikeHorn
-    Whistle:
-      path: /Audio/Voice/Resomi/resomi_whistle.ogg
-    Chirp:
-      collection: ResomiChirp
-    Weh:
-      collection: Weh
-    Hew:
-      collection: Hew
-    Gasp:
-      collection: FemaleGasp
-    DefaultDeathgasp:
-      collection: DeathGasp
-    Sigh:
-      collection: FemaleSigh
-    Crying:
-      collection: ResomiCry
-    Cough:
-      collection: FemaleCoughs
-    Yawn:
-      collection: FemaleYawn
-    Hisses:
-      collection: FelionoidHisses
-    Purr:
-      collection: FelionoidPurrs
-    Growl:
-      collection: FelionoidGrowls
-    Trill:
-      collection: FelionoidTrills
-    Scree:
-      collection: ResomiScrees
-    Call:
-      collection: ResomiCalls
-    Squawk:
-      collection: ResomiSquawk
-
-- type: emoteSounds
   id: UnisexSiliconXenoborg
   params:
     variation: 0.05
@@ -669,7 +627,7 @@
     Laugh:
       collection: MaleLaugh
     Sneeze:
-      collection: MaleSneezes
+      collection: VulpkaninSneeze
     Cough:
       collection: MaleCoughs
     Whistle:
@@ -701,6 +659,8 @@
       collection: Weh
     Hew:
       collection: Hew
+    Honk:
+      collection: BikeHorn
     Gasp:
       collection: MaleGasp
     DefaultDeathgasp:
@@ -715,7 +675,7 @@
     Laugh:
       collection: FemaleLaugh
     Sneeze:
-      collection: FemaleSneezes
+      collection: VulpkaninSneeze
     Cough:
       collection: FemaleCoughs
     Whistle:
@@ -747,6 +707,8 @@
       collection: Weh
     Hew:
       collection: Hew
+    Honk:
+      collection: BikeHorn
     Gasp:
       collection: FemaleGasp
     DefaultDeathgasp:
@@ -829,7 +791,7 @@
       path: /Audio/_Starlight/Voice/Moth/moth_flapwings.ogg
       params:
         pitch: 1.45
-    
+
 # Starlight END
 
 # mobs

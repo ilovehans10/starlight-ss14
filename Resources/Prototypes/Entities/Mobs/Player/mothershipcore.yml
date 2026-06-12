@@ -1,13 +1,13 @@
 - type: entity
-  parent: [ BaseControllable, BaseStructure ]
+  parent: [ BaseControllable, BaseStructure, BaseXenoSiliconLanguages] # Starlight
   id: MothershipCore
   name: mothership core
   description: A sentient machine that can produce Xenoborgs. Without this the Xenoborgs are doomed.
   components:
   - type: InputMover # needs this to pilot the mothership
-  - type: MovementSpeedModifier
-    baseWalkSpeed : 0 # shouldn't move
-    baseSprintSpeed : 0 # shouldn't move
+  - type: BlockMovement # They should never be moving!
+    blockInteraction: false
+    blockUse: false
   - type: Appearance
   - type: WiresVisuals
   - type: Damageable
@@ -22,8 +22,7 @@
         mask:
         - MachineMask
         layer:
-        - MidImpassable
-        - LowImpassable
+        - MachineLayer
   - type: Sprite
     sprite: Mobs/Silicon/mothership_core.rsi
     layers:
@@ -62,7 +61,7 @@
     thresholds:
     - trigger:
         !type:DamageTrigger
-        damage: 200
+        damage: 400 # Starlight - as tough as an AI Core
       behaviors:
       - !type:DoActsBehavior
         acts: ["Destruction"]
@@ -85,20 +84,21 @@
     doAfterDelay: 30 # you can heal the mothership core, but it takes a while
   - type: DamagedSiliconAccent
     enableChargeCorruption: false
-  - type: Explosive
-    explosionType: Default
-    maxIntensity: 100
-    intensitySlope: 2
-    totalIntensity: 200
+  # TODO: make it explosive again once until issue https://github.com/space-wizards/space-station-14/issues/40606 is fixed
+  # - type: Explosive
+  #   explosionType: Default
+  #   maxIntensity: 100
+  #   intensitySlope: 2
+  #   totalIntensity: 200
   - type: SurveillanceCameraSpeaker
   - type: SurveillanceCameraMonitor
   - type: RoboticsConsole
-    allowBorgControl: false
-    radioChannel: Xenoborg
+    allowBorgControl: true # Starlight - allow mothership AND ONLY MOTHERSHIP to explode xenoborgs
+    radioChannel: Mothership # Starlight - Send the destruction message in the appropriately red mothership channel
   - type: DeviceNetwork
     deviceNetId: Wireless
     receiveFrequencyId: Mothership
-    transmitFrequencyId: Mothership
+    transmitFrequencyId: Xenoborg # Starlight - actually allow the mothership to blow stuff up
   - type: WirelessNetworkConnection
     range: 10000 # mothership can see them from very far
   - type: WiresPanel
@@ -126,6 +126,9 @@
   - type: WarpPoint
     location: Mothership Core
     follow: true
+    blacklist: # Starlight start
+      tags: # This is here because Wizard
+      - GhostOnlyWarp # Starlight end
   - type: VoiceOverride
     nameOverride: MOTHERSHIP CORE
   - type: TypingIndicator
@@ -159,6 +162,7 @@
     - SiliconEmotes
     - CanPilot
     - Structure
+    - GhostOnlyWarp # Starlight
   - type: GuideHelp
     guides:
     - Robotics
@@ -199,6 +203,11 @@
       cell_slot:
         name: power-cell-slot-component-slot-name-default
         startingItem: PowerCellMicroreactor
+        #Starlight Start
+        blacklist:
+          tags:
+          - MechReactor
+        #Starlight End
   - type: Puller
     needsHands: false
   - type: Eye

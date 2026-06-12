@@ -1,14 +1,26 @@
-﻿using Content.Server.Humanoid;
+using System.Linq;
+using Content.Server._Starlight.Language;
+using Content.Server.Humanoid;
+using Content.Shared.Actions;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Eye.Blinding.Components;
 using Content.Shared.Eye.Blinding.Systems;
+using Content.Shared.Humanoid;
+using Content.Shared.Radio.Components;
 using Content.Shared.Speech.Muting;
 using Content.Shared.Starlight.Antags.Abductor;
+using Content.Shared._Starlight.Cybernetics;
+using Content.Shared._Starlight.Cybernetics.Components;
+using Content.Shared._Starlight.Language.Components;
 using Content.Shared.Starlight.Medical.Surgery.Events;
 using Content.Shared.Starlight.Medical.Surgery.Steps.Parts;
-using Content.Shared.VentCraw;
+using Content.Shared.Tag;
+using Robust.Shared.Containers;
+using Content.Shared.FixedPoint;
+using Robust.Shared.Timing;
+using Content.Shared._Starlight.VentCrawl.Components;
 
 namespace Content.Server._Starlight.Medical.Surgery;
 public sealed partial class OrganSystem : EntitySystem
@@ -16,14 +28,24 @@ public sealed partial class OrganSystem : EntitySystem
 
     [Dependency] private readonly BlindableSystem _blindable = default!;
     [Dependency] private readonly DamageableSystem _damageableSystem = default!;
-    [Dependency] private readonly IComponentFactory _compFactory = default!;
     [Dependency] private readonly HumanoidAppearanceSystem _humanoidAppearanceSystem = default!;
+    [Dependency] private readonly TagSystem _tag = default!;
+    [Dependency] private readonly LanguageSystem _language = default!;
+    [Dependency] private readonly SharedContainerSystem _container = default!;
+    [Dependency] private readonly IGameTiming _timing = default!;
+    [Dependency] private readonly SharedActionsSystem _actions = default!;
 
     public override void Initialize()
     {
         base.Initialize();
         SubscribeLocalEvent<FunctionalOrganComponent, SurgeryOrganImplantationCompleted>(OnFunctionalOrganImplanted);
         SubscribeLocalEvent<FunctionalOrganComponent, SurgeryOrganExtracted>(OnFunctionalOrganExtracted);
+
+        SubscribeLocalEvent<TaggedOrganComponent, SurgeryOrganImplantationCompleted>(OnTaggedOrganImplanted);
+        SubscribeLocalEvent<TaggedOrganComponent, SurgeryOrganExtracted>(OnTaggedOrganExtracted);
+
+        SubscribeLocalEvent<StorageOrganComponent, SurgeryOrganImplantationCompleted>(OnStorageOrganImplanted);
+        SubscribeLocalEvent<StorageOrganComponent, SurgeryOrganExtracted>(OnStorageOrganExtracted);
 
         SubscribeLocalEvent<OrganEyesComponent, SurgeryOrganImplantationCompleted>(OnEyeImplanted);
         SubscribeLocalEvent<OrganEyesComponent, SurgeryOrganExtracted>(OnEyeExtracted);
@@ -39,6 +61,8 @@ public sealed partial class OrganSystem : EntitySystem
 
         SubscribeLocalEvent<OrganVisualizationComponent, SurgeryOrganImplantationCompleted>(OnVisualizationImplanted);
         SubscribeLocalEvent<OrganVisualizationComponent, SurgeryOrganExtracted>(OnVisualizationExtracted);
+
+        SubscribeLocalEvent<FunctionalOrganComponent, CyberneticDisruptionEvent>(OnCyberneticsDisrupted);
     }
 
     //
@@ -46,24 +70,107 @@ public sealed partial class OrganSystem : EntitySystem
     private void OnFunctionalOrganImplanted(Entity<FunctionalOrganComponent> ent, ref SurgeryOrganImplantationCompleted args)
     {
         foreach (var comp in (ent.Comp.Components ?? []).Values)
+        {
             if (!EntityManager.HasComponent(args.Body, comp.Component.GetType()))
+            {
                 EntityManager.AddComponent(args.Body, comp.Component);
+                UpdateEntity(args.Body, comp.Component, ent.Owner);
+            }
+        }
     }
 
     private void OnFunctionalOrganExtracted(Entity<FunctionalOrganComponent> ent, ref SurgeryOrganExtracted args)
     {
         foreach (var comp in (ent.Comp.Components ?? []).Values)
+        {
             if (EntityManager.HasComponent(args.Body, comp.Component.GetType()))
-                EntityManager.RemoveComponent(args.Body, _compFactory.GetComponent(comp.Component.GetType()));
+            {
+                EntityManager.RemoveComponent(args.Body, EntityManager.GetComponent(args.Body, comp.Component.GetType()));
+                UpdateEntity(args.Body, comp.Component, ent.Owner);
+            }
+        }
+    }
+
+    private void UpdateEntity(EntityUid ent, IComponent comp, EntityUid? implant = null)
+    {
+        //For all those components where the enity needs to be updated in their own way after adding or removing a component
+        switch (comp)
+        {
+            case IntrinsicTranslatorComponent _:
+                _language.UpdateEntityLanguages(ent);
+                break;
+            case EncryptionKeyHolderComponent encrypt: //Move encryption keys between implant and body
+                if(implant != null)
+                    if(TryComp(implant, out EncryptionKeyHolderComponent? implantKeyHolder))
+                        if (TryComp(ent, out EncryptionKeyHolderComponent? bodyKeyHolder))
+                            foreach (var key in implantKeyHolder.KeyContainer.ContainedEntities.ToList())
+                                _container.Insert(key, bodyKeyHolder.KeyContainer);
+                        else
+                            foreach (var key in encrypt.KeyContainer.ContainedEntities.ToList())
+                                _container.Insert(key, implantKeyHolder.KeyContainer);
+                break;
+        }
+    }
+
+    //
+
+    private void OnTaggedOrganImplanted(Entity<TaggedOrganComponent> ent, ref SurgeryOrganImplantationCompleted args)
+    {
+        if(ent.Comp.AddTags.Count > 0)
+            _tag.AddTags(args.Body, ent.Comp.AddTags);
+        if(ent.Comp.RemoveTags.Count > 0)
+            _tag.RemoveTags(args.Body, ent.Comp.RemoveTags);
+        UpdateEntity(args.Body, ent.Comp);
+    }
+
+    private void OnTaggedOrganExtracted(Entity<TaggedOrganComponent> ent, ref SurgeryOrganExtracted args)
+    {
+        if(ent.Comp.AddTags.Count > 0)
+            _tag.RemoveTags(args.Body, ent.Comp.AddTags);
+        if(ent.Comp.RemoveTags.Count > 0)
+            _tag.AddTags(args.Body, ent.Comp.RemoveTags);
+        UpdateEntity(args.Body, ent.Comp);
+    }
+
+    //
+
+    private void OnStorageOrganImplanted(Entity<StorageOrganComponent> ent, ref SurgeryOrganImplantationCompleted args)
+    {
+        // The results of the container change are already networked on their own
+        if (_timing.ApplyingState)
+            return;
+
+        Dirty(ent);
+
+        if (ent.Comp.OrganAction != null)
+            _actions.AddAction(args.Body, ref ent.Comp.ActionEntity, ent.Comp.OrganAction, ent.Owner);
+
+    }
+
+    private void OnStorageOrganExtracted(Entity<StorageOrganComponent> ent, ref SurgeryOrganExtracted args)
+    {
+        // The results of the container change are already networked on their own
+        if (_timing.ApplyingState)
+            return;
+
+        _actions.RemoveAction(args.Body, ent.Comp.ActionEntity);
+        ent.Comp.ActionEntity = null;
     }
 
     //
 
     private void OnOrganImplanted(Entity<DamageableComponent> ent, ref SurgeryOrganImplantationCompleted args)
     {
-        if (!TryComp<DamageableComponent>(args.Body, out var bodyDamageable)) return;
+        if (!TryComp<OrganDamageComponent>(ent.Owner, out var damageRule)
+         || damageRule.Damage is null
+         || !TryComp<DamageableComponent>(args.Body, out _))
+            return;
 
-        var change = _damageableSystem.ChangeDamage(args.Body, ent.Comp.Damage, true, false);
+        var transferredDamage = GetImplantTransferredDamage(ent.Comp.Damage, damageRule.Damage);
+        if (transferredDamage.Empty)
+            return;
+
+        var change = _damageableSystem.ChangeDamage(args.Body, transferredDamage, true, false);
         if (change is not null)
             _damageableSystem.ChangeDamage(ent.Owner, change.Invert(), true, false);
     }
@@ -87,6 +194,24 @@ public sealed partial class OrganSystem : EntitySystem
         if (ent.Comp.Organ == AbductorOrganType.Vent)
             AddComp<VentCrawlerComponent>(args.Body);
     }
+
+    private static DamageSpecifier GetImplantTransferredDamage(DamageSpecifier organDamage, DamageSpecifier limit)
+    {
+        var transferredDamage = new DamageSpecifier();
+
+        foreach (var (type, maxAmount) in limit.DamageDict)
+        {
+            if (!organDamage.DamageDict.TryGetValue(type, out var currentDamage)
+             || currentDamage <= FixedPoint2.Zero
+             || maxAmount <= FixedPoint2.Zero)
+                continue;
+
+            transferredDamage.DamageDict[type] = FixedPoint2.Min(currentDamage, maxAmount);
+        }
+
+        return transferredDamage;
+    }
+
     private void OnAbductorOrganExtracted(Entity<AbductorOrganComponent> ent, ref SurgeryOrganExtracted args)
     {
         if (TryComp<AbductorVictimComponent>(args.Body, out var victim))
@@ -131,11 +256,27 @@ public sealed partial class OrganSystem : EntitySystem
 
     //
 
-    private void OnVisualizationExtracted(Entity<OrganVisualizationComponent> ent, ref SurgeryOrganExtracted args) 
+    private void OnVisualizationExtracted(Entity<OrganVisualizationComponent> ent, ref SurgeryOrganExtracted args)
         => _humanoidAppearanceSystem.SetLayersVisibility(args.Body, [ent.Comp.Layer], false);
     private void OnVisualizationImplanted(Entity<OrganVisualizationComponent> ent, ref SurgeryOrganImplantationCompleted args)
     {
+        if (!TryComp<HumanoidAppearanceComponent>(args.Body, out var _)) return;
+
         _humanoidAppearanceSystem.SetLayersVisibility(args.Body, [ent.Comp.Layer], true);
-        _humanoidAppearanceSystem.SetBaseLayerId(args.Body, ent.Comp.Layer, ent.Comp.Prototype);
+        _humanoidAppearanceSystem.SetBaseLayerId(args.Body, ent.Comp.Layer,
+        TryComp(args.Body, out HumanoidAppearanceComponent? humanoid) && ent.Comp.Prototypes.TryGetValue(humanoid.Species, out var layer)? layer :
+        ent.Comp.Prototypes.TryGetValue("Default", out var defaultLayer)? defaultLayer : null);
+    }
+
+    private void OnCyberneticsDisrupted(Entity<FunctionalOrganComponent> ent, ref CyberneticDisruptionEvent args)
+    {
+        if(!ent.Comp.IsCybernetic)
+            return;
+
+        if (TryComp(args.Target, out CyberneticDisruptionComponent? _))
+        {
+            // Nothing happens here yet
+            return;
+        }
     }
 }

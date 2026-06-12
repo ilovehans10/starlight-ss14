@@ -7,6 +7,7 @@ namespace Content.Shared.Humanoid
     public enum HumanoidVisualLayers : byte
     {
         Special, // for the cat ears
+        TailExtras, // Starlight
         Tail,
         Hair,
         FacialHair,
@@ -31,7 +32,10 @@ namespace Content.Shared.Humanoid
         StencilMask,
         Ensnare,
         Fire,
-        
+        FaceCover, // Far Horizons
+        FaceCoverCover, // Far Horizons
+        BodyCover, // Far Horizons
+        BodyCoverCover, // Far Horizons
         Other
     }
 }

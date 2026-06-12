@@ -6,14 +6,11 @@ using Robust.Server.GameObjects;
 using Robust.Shared.Audio;
 using Robust.Shared.Player;
 using Robust.Server.Audio;
-using Content.Shared.Actions;
-using Content.Shared.Charges.Systems;
 
 namespace Content.Server._Starlight.Antags.Actions;
 
 public sealed partial class EMPScreamSystem : EntitySystem
 {
-    [Dependency] private readonly SharedChargesSystem _chargesSystem = default!;
     [Dependency] private readonly EmpSystem _emp = default!;
     [Dependency] private readonly TransformSystem _transform = default!;
     [Dependency] private readonly ISharedPlayerManager _player = default!;

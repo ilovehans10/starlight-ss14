@@ -162,8 +162,22 @@ public sealed partial record PolymorphConfiguration
     {
         "LanguageKnowledge",
         "LanguageSpeaker",
-        "Grammar"
+        "Grammar",
+        "MindShield",
+        "NukeOperative",
+        "HeadRevolutionary",
+        "Revolutionary",
+        "CommandStaff",
+        "BibleUser",
+        "MimePowers"
     };
+
+    /// <summary>
+    /// Whether or not the target of the polymorph should gain the languages
+    /// typically spoken by the Entity
+    /// </summary>
+    [DataField(serverOnly: true)]
+    public bool TransferLanguages = true;
     // Starlight - End
 
     /// <summary>

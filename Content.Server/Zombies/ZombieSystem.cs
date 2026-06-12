@@ -1,6 +1,5 @@
 using Content.Shared.NPC.Prototypes;
 using Content.Server.Actions;
-using Content.Server.Body.Systems;
 using Content.Server.Chat;
 using Content.Server.Chat.Systems;
 using Content.Server.Emoting.Systems;
@@ -27,6 +26,7 @@ using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
 using Content.Shared._Starlight.Language.Components;
+using Content.Server._Starlight.Medical.Body.Systems;
 
 namespace Content.Server.Zombies
 {
@@ -274,7 +274,7 @@ namespace Content.Server.Zombies
                     _damageable.TryChangeDamage(args.User, entity.Comp.HealingOnBite, true, false);
 
                     // If we cannot infect the living target, the zed will just heal itself.
-                    if (HasComp<ZombieImmuneComponent>(uid) || cannotSpread || _random.Prob(GetZombieInfectionChance(uid, entity.Comp)))
+                    if (HasComp<ZombieImmuneComponent>(uid) || cannotSpread || !_random.Prob(GetZombieInfectionChance(uid, entity.Comp)))
                         continue;
 
                     EnsureComp<PendingZombieComponent>(uid);
@@ -282,7 +282,8 @@ namespace Content.Server.Zombies
                 }
                 else
                 {
-                    if (HasComp<ZombieImmuneComponent>(uid) || cannotSpread)
+                    if (HasComp<ZombieImmuneComponent>(uid) || cannotSpread
+                    || !_random.Prob(GetZombieInfectionChance(uid, entity.Comp))) //Starlight fix: Infection-proof suits don't just lose their resistance on death.
                         continue;
 
                     // If the target is dead and can be infected, infect.

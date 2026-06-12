@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Content.Shared.CCVar;
 using Content.Shared.Players;
 using Content.Shared.Players.JobWhitelist;
@@ -14,9 +15,9 @@ using Robust.Shared.Prototypes;
 using Robust.Shared.Utility;
 
 #region Starlight
-using Content.Client._Starlight.Managers;
-using Content.Client.Lobby;
-using Content.Shared.Starlight;
+using Content.Client._Starlight.Achievement;
+using Content.Shared._NullLink;
+using Content.Shared.NullLink.CCVar;
 #endregion Starlight
 
 namespace Content.Client.Players.PlayTimeTracking;
@@ -29,11 +30,20 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
     [Dependency] private readonly IEntityManager _entManager = default!;
     [Dependency] private readonly IPlayerManager _playerManager = default!;
     [Dependency] private readonly IPrototypeManager _prototypes = default!;
+    [Dependency] private readonly IClientAchievementManager _achievements = default!;
 
-    private readonly Dictionary<string, TimeSpan> _roles = new();
     private readonly List<string> _jobBans = new();
     private readonly List<string> _antagBans = new();
     private readonly List<string> _jobWhitelists = new();
+
+    // nulllink start
+    private Dictionary<string, TimeSpan> _originalRoles = [];
+    private readonly Dictionary<string, TimeSpan> _mergedRoles = [];
+    private Dictionary<string, Dictionary<string, TimeSpan>> _rolesPerServer = [];
+    private ServerPlaytimeRecognitionPrototype? _serverPlaytimeRecognition;
+    private string? _project;
+    private string? _server;
+    // nulllink end
 
     private ISawmill _sawmill = default!;
 
@@ -48,15 +58,83 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
         _net.RegisterNetMessage<MsgPlayTime>(RxPlayTime);
         _net.RegisterNetMessage<MsgJobWhitelist>(RxJobWhitelist);
 
+        // NullLink start
+        _net.RegisterNetMessage<MsgUpdatePlayerPlayTime>(Update);
+        _achievements.AchievementsUpdated += OnAchievementsUpdated;
+        _cfg.OnValueChanged(NullLinkCCVars.Project, OnProjectChanged, true);
+        _cfg.OnValueChanged(NullLinkCCVars.Server, OnServerChanged, true);
+        // NullLink end
+
         _client.RunLevelChanged += ClientOnRunLevelChanged;
     }
+
+    // Nulllink start
+    private void Update(MsgUpdatePlayerPlayTime message)
+    {
+        _rolesPerServer = message.RolePlayTimePerServer;
+        MergePlayTime();
+    }
+
+    private void OnProjectChanged(string value)
+    {
+        _project = value;
+        _serverPlaytimeRecognition = null;
+        MergePlayTime();
+    }
+
+    private void OnServerChanged(string value)
+    {
+        _server = value;
+        MergePlayTime();
+    }
+
+    private void MergePlayTime()
+    {
+        _mergedRoles.Clear();
+
+        foreach (var (tracker, time) in _originalRoles)
+            _mergedRoles[tracker] = time;
+
+        if (!string.IsNullOrEmpty(_server) && !string.IsNullOrEmpty(_project))
+        {
+            if (_serverPlaytimeRecognition is null)
+                _prototypes.TryIndex(_project, out _serverPlaytimeRecognition);
+
+            if (_serverPlaytimeRecognition?.Recognition.TryGetValue(_server, out var servers) is true)
+            {
+                foreach (var server in servers)
+                {
+                    if (_rolesPerServer.TryGetValue(server, out var rolesForServer))
+                    {
+                        foreach (var (tracker, time) in rolesForServer)
+                        {
+                            if (_mergedRoles.ContainsKey(tracker))
+                                _mergedRoles[tracker] += time;
+                            else
+                                _mergedRoles[tracker] = time;
+                        }
+                    }
+                }
+            }
+        }
+
+        Updated?.Invoke();
+    }
+
+    private void OnAchievementsUpdated()
+        =>  Updated?.Invoke();
+    // Nulllink end
 
     private void ClientOnRunLevelChanged(object? sender, RunLevelChangedEventArgs e)
     {
         if (e.NewLevel == ClientRunLevel.Initialize)
         {
             // Reset on disconnect, just in case.
-            _roles.Clear();
+            // NullLink start
+            _originalRoles.Clear();
+            _mergedRoles.Clear();
+            _rolesPerServer.Clear();
+            // NullLink end
             _jobWhitelists.Clear();
             _jobBans.Clear();
             _antagBans.Clear();
@@ -76,20 +154,23 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
 
     private void RxPlayTime(MsgPlayTime message)
     {
-        _roles.Clear();
+        // NullLink start
+        _originalRoles = message.Trackers;
 
-        // NOTE: do not assign _roles = message.Trackers due to implicit data sharing in integration tests.
-        foreach (var (tracker, time) in message.Trackers)
-        {
-            _roles[tracker] = time;
-        }
+        MergePlayTime();
+        //// NOTE: do not assign _roles = message.Trackers due to implicit data sharing in integration tests.
+        //foreach (var (tracker, time) in message.Trackers)
+        //{
+        //    _originalRoles[tracker] = time;
+        //}
 
-        /*var sawmill = Logger.GetSawmill("play_time");
-        foreach (var (tracker, time) in _roles)
-        {
-            sawmill.Info($"{tracker}: {time}");
-        }*/
-        Updated?.Invoke();
+        ///*var sawmill = Logger.GetSawmill("play_time");
+        //foreach (var (tracker, time) in _roles)
+        //{
+        //    sawmill.Info($"{tracker}: {time}");
+        //}*/
+        //Updated?.Invoke();
+        // NullLink end
     }
 
     private void RxJobWhitelist(MsgJobWhitelist message)
@@ -109,9 +190,9 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
         List<ProtoId<JobPrototype>>? jobs,
         List<ProtoId<AntagPrototype>>? antags,
         HumanoidCharacterProfile? profile,
-        [NotNullWhen(false)] out FormattedMessage? reason)
+        out FormattedMessage reason) // Starlight: Always return reason
     {
-        reason = null;
+        reason = new FormattedMessage(); // Starlight
 
         if (antags is not null)
         {
@@ -140,12 +221,12 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
     public bool IsAllowed(
         JobPrototype job,
         HumanoidCharacterProfile? profile,
-        [NotNullWhen(false)] out FormattedMessage? reason)
+        out FormattedMessage reason) // Starlight: Always return reason
     {
         // Check the player's bans
         if (_jobBans.Contains(job.ID))
         {
-            reason = FormattedMessage.FromUnformatted(Loc.GetString("role-ban"));
+            reason = FormattedMessage.FromMarkupPermissive(Loc.GetString("role-ban")); // Starlight: Formatted
             return false;
         }
 
@@ -171,7 +252,7 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
     public bool IsAllowed(
         AntagPrototype antag,
         HumanoidCharacterProfile? profile,
-        [NotNullWhen(false)] out FormattedMessage? reason)
+        out FormattedMessage reason) // Starlight: Always return reason
     {
         // Check the player's bans
         if (_antagBans.Contains(antag.ID))
@@ -199,60 +280,143 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
     /// <summary>
     /// SL: Check against a requirements list without a role. Avoid using if there's a role, as this doesn't check bans.
     /// </summary>
-    public bool CheckRequirementsForNonRole(HashSet<JobRequirement>? requirements, ICommonSession? player, HumanoidCharacterProfile? profile, [NotNullWhen(false)] out FormattedMessage? reason)
+    public bool CheckRequirementsForNonRole(HashSet<JobRequirement>? requirements, ICommonSession? player, HumanoidCharacterProfile? profile, out FormattedMessage reason) // Starlight: Always return reason
     {
         return CheckRoleRequirements(requirements, player, profile, out reason);
     }
 
     // This must be private so code paths can't accidentally skip requirement overrides. Call this through IsAllowed()
-    private bool CheckRoleRequirements(HashSet<JobRequirement>? requirements, ICommonSession? player, HumanoidCharacterProfile? profile, [NotNullWhen(false)] out FormattedMessage? reason)
+    private bool CheckRoleRequirements(HashSet<JobRequirement>? requirements, ICommonSession? player, HumanoidCharacterProfile? profile, out FormattedMessage reason) // Starlight: Always return reason
     {
-        reason = null;
+        reason = new FormattedMessage(); // Starlight
 
         if (requirements == null || !_cfg.GetCVar(CCVars.GameRoleTimers))
             return true;
 
-        var reasons = new List<string>();
+        var success = true; // Starlight
         foreach (var requirement in requirements)
         {
-            if (requirement.Check(_entManager, player, _prototypes, profile, _roles, out var jobReason))
-                continue;
+            if (!requirement.Check(_entManager, player, _prototypes, profile, _mergedRoles, out var checkDetails))
+                success = false; // Starlight
 
-            reasons.Add(jobReason.ToMarkup());
+            if (!reason.IsEmpty) // Starlight BEGIN
+                reason.PushNewline();
+            reason.AddMessage(checkDetails); // Starlight END
         }
 
-        reason = reasons.Count == 0 ? null : FormattedMessage.FromMarkupOrThrow(string.Join('\n', reasons));
-        return reason == null;
+        return success; // Starlight
     }
 
-    public bool CheckWhitelist(JobPrototype job, [NotNullWhen(false)] out FormattedMessage? reason)
+    public bool CheckWhitelist(JobPrototype job, out FormattedMessage reason) // Starlight: Always return reason
     {
-        reason = default;
+        reason = FormattedMessage.FromMarkupPermissive(Loc.GetString("role-whitelisted")); // Starlight: Markup
+
         if (!_cfg.GetCVar(CCVars.GameRoleWhitelist))
             return true;
 
         if (job.Whitelisted && !_jobWhitelists.Contains(job.ID))
         {
-            reason = FormattedMessage.FromUnformatted(Loc.GetString("role-not-whitelisted"));
+            reason = FormattedMessage.FromMarkupPermissive(Loc.GetString("role-not-whitelisted")); // Starlight: Markup
             return false;
         }
 
         return true;
     }
 
-    public bool CheckWhitelist(AntagPrototype antag, [NotNullWhen(false)] out FormattedMessage? reason)
+    public bool CheckWhitelist(AntagPrototype antag, out FormattedMessage reason) // Starlight: Always return reason
     {
-        reason = default;
+        reason = FormattedMessage.Empty; // Starlight
 
         // TODO: Implement antag whitelisting.
 
         return true;
     }
 
+    // nullink
+    public TimeSpan GetServerPlaytime(string server, string tracker)
+        => _rolesPerServer.TryGetValue(server, out var rolesForServer)
+            && rolesForServer.TryGetValue(tracker, out var time)
+            ? time
+            : TimeSpan.Zero;
+
+    // nullink
     public TimeSpan FetchOverallPlaytime()
+        => _mergedRoles
+            .TryGetValue("Overall", out var overallPlaytime) ? overallPlaytime : TimeSpan.Zero;
+
+    // starlight start
+    public string? GetCurrentServerName() => _server;
+
+    public IReadOnlyDictionary<string, Dictionary<string, TimeSpan>> GetRolesPerServer() => _rolesPerServer;
+
+    public Dictionary<string, TimeSpan> GetOriginalRoles() => _originalRoles;
+
+    public TimeSpan FetchOverallPlaytime(Dictionary<string, TimeSpan> roles)
+        => roles.TryGetValue("Overall", out var overallPlaytime) ? overallPlaytime : TimeSpan.Zero;
+
+    public IEnumerable<KeyValuePair<JobPrototype, TimeSpan>> FetchPlaytimeByRoles(Dictionary<string, TimeSpan> roles)
     {
-        return _roles.TryGetValue("Overall", out var overallPlaytime) ? overallPlaytime : TimeSpan.Zero;
+        var jobsToMap = _prototypes.EnumeratePrototypes<JobPrototype>();
+        foreach (var job in jobsToMap)
+        {
+            if (roles.TryGetValue(job.PlayTimeTracker, out var time))
+                yield return new KeyValuePair<JobPrototype, TimeSpan>(job, time);
+        }
     }
+
+    public IEnumerable<KeyValuePair<DepartmentPrototype, TimeSpan>> FetchPlaytimeByDepartments(Dictionary<string, TimeSpan> roles)
+    {
+        var departmentsToMap = _prototypes.EnumeratePrototypes<DepartmentPrototype>();
+        foreach (var department in departmentsToMap)
+        {
+            var departmentTime = TimeSpan.Zero;
+            foreach (var job in department.Roles)
+            {
+                if (!_prototypes.TryIndex(job, out JobPrototype? jobProto))
+                    continue;
+                if (roles.TryGetValue(jobProto.PlayTimeTracker, out var time))
+                    departmentTime += time;
+            }
+            if (departmentTime == TimeSpan.Zero)
+                continue;
+            yield return new KeyValuePair<DepartmentPrototype, TimeSpan>(department, departmentTime);
+        }
+    }
+
+    public IEnumerable<KeyValuePair<AntagPrototype, TimeSpan>> FetchPlaytimeByAntags(Dictionary<string, TimeSpan> roles)
+    {
+        var antagsToMap = _prototypes.EnumeratePrototypes<AntagPrototype>();
+        foreach (var antag in antagsToMap)
+        {
+            if (antag.PlayTimeTracker == null)
+                continue;
+            if (roles.TryGetValue(antag.PlayTimeTracker, out var time))
+                yield return new KeyValuePair<AntagPrototype, TimeSpan>(antag, time);
+        }
+    }
+
+    public IEnumerable<KeyValuePair<PlayTimeTrackerPrototype, TimeSpan>> FetchPlaytimeMiscellaneous(
+        Dictionary<string, TimeSpan> roles,
+        IEnumerable<KeyValuePair<JobPrototype, TimeSpan>> jobPlaytimes,
+        IEnumerable<KeyValuePair<AntagPrototype, TimeSpan>> antagPlaytimes)
+    {
+        var trackers = _prototypes.EnumeratePrototypes<PlayTimeTrackerPrototype>();
+        var exclude = new HashSet<string> { "Overall" };
+        foreach (var jobPlaytime in jobPlaytimes)
+            exclude.Add(jobPlaytime.Key.PlayTimeTracker);
+        foreach (var antagPlaytime in antagPlaytimes)
+            if (antagPlaytime.Key.PlayTimeTracker != null)
+                exclude.Add(antagPlaytime.Key.PlayTimeTracker);
+        foreach (var tracker in trackers)
+        {
+            if (exclude.Contains(tracker.ID))
+                continue;
+            if (!roles.TryGetValue(tracker.ID, out var rolePlaytime))
+                continue;
+            yield return new KeyValuePair<PlayTimeTrackerPrototype, TimeSpan>(tracker, rolePlaytime);
+        }
+    }
+    // starlight end
 
     //starlight edit, string changed to JobPrototype
     public IEnumerable<KeyValuePair<JobPrototype, TimeSpan>> FetchPlaytimeByRoles()
@@ -261,7 +425,7 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
 
         foreach (var job in jobsToMap)
         {
-            if (_roles.TryGetValue(job.PlayTimeTracker, out var locJobName))
+            if (_mergedRoles.TryGetValue(job.PlayTimeTracker, out var locJobName))
             {
                 yield return new KeyValuePair<JobPrototype, TimeSpan>(job, locJobName);
             }
@@ -283,8 +447,8 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
                 //get it as the actual type
                 if (!_prototypes.TryIndex(job, out JobPrototype? jobProto))
                     continue;
-                
-                if (_roles.TryGetValue(jobProto.PlayTimeTracker, out var time))
+
+                if (_mergedRoles.TryGetValue(jobProto.PlayTimeTracker, out var time))
                 {
                     departmentTime += time;
                 }
@@ -297,6 +461,50 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
             yield return new KeyValuePair<DepartmentPrototype, TimeSpan>(department, departmentTime);
         }
     }
+
+    /// <summary>
+    /// Fetches playtime per antag prototype.
+    /// </summary>b
+    public IEnumerable<KeyValuePair<AntagPrototype, TimeSpan>> FetchPlaytimeByAntags()
+    {
+        var antagsToMap = _prototypes.EnumeratePrototypes<AntagPrototype>();
+        foreach (var antag in antagsToMap)
+        {
+            if (antag.PlayTimeTracker == null)
+                continue;
+
+            if (_mergedRoles.TryGetValue(antag.PlayTimeTracker, out var time))
+                yield return new KeyValuePair<AntagPrototype, TimeSpan>(antag, time);
+        }
+    }
+
+    /// <summary>
+    /// Fetches playtime for all PlayTimeTracker prototypes that we don't see in any job or antag.
+    /// This covers ghost roles and various admin spawns.
+    /// </summary>
+    public IEnumerable<KeyValuePair<PlayTimeTrackerPrototype, TimeSpan>> FetchPlaytimeMiscellaneous(
+        IEnumerable<KeyValuePair<JobPrototype, TimeSpan>> jobPlaytimes,
+        IEnumerable<KeyValuePair<AntagPrototype, TimeSpan>> antagPlaytimes)
+    {
+        var trackers = _prototypes.EnumeratePrototypes<PlayTimeTrackerPrototype>();
+        var exclude = new HashSet<string> { "Overall" };
+        foreach (var jobPlaytime in jobPlaytimes)
+            exclude.Add(jobPlaytime.Key.PlayTimeTracker);
+        foreach (var antagPlaytime in antagPlaytimes)
+            if (antagPlaytime.Key.PlayTimeTracker != null)
+                exclude.Add(antagPlaytime.Key.PlayTimeTracker);
+
+        foreach (var tracker in trackers)
+        {
+            if (exclude.Contains(tracker.ID))
+                continue;
+
+            if (!_mergedRoles.TryGetValue(tracker.ID, out var rolePlaytime))
+                continue;
+
+            yield return new KeyValuePair<PlayTimeTrackerPrototype, TimeSpan>(tracker, rolePlaytime);
+        }
+    }
     //starlight end
 
     public IReadOnlyDictionary<string, TimeSpan> GetPlayTimes(ICommonSession session)
@@ -306,6 +514,6 @@ public sealed class JobRequirementsManager : ISharedPlaytimeManager
             return new Dictionary<string, TimeSpan>();
         }
 
-        return _roles;
+        return _mergedRoles;
     }
 }

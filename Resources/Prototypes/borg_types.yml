@@ -13,6 +13,7 @@
     - BorgModuleScience #until sciborgs are added
 
   defaultModules:
+  - BorgModulePrying
   - BorgModuleTool
   - BorgModuleInflatable
   - BorgModuleArtifact
@@ -21,7 +22,7 @@
   - Science
 
   # Visual
-  inventoryTemplateId: borgShort
+  inventoryTemplateId: borg # Starlight - why was this not always the case?
   spritePath: Mobs/Silicon/Chassis/generic.rsi
 
   # Pet
@@ -44,6 +45,7 @@
     - BorgModuleEngineering
 
   defaultModules:
+  - BorgModulePrying
   - BorgModuleTool
   - BorgModuleConstruction
   - BorgModuleRCD
@@ -52,6 +54,17 @@
   radioChannels:
   - Engineering
   - Science
+
+  # Starlight start: Engiborg hud
+  addComponents:
+  - type: ShowHealthBars
+    damageContainers:
+    - Inorganic
+    - Silicon
+    - IPC
+    - Hybrid
+  - type: ShowAccessReaderSettings
+  # Starlight end
 
   # Visual
   inventoryTemplateId: borgShort
@@ -82,8 +95,10 @@
     tags:
     - BorgModuleGeneric
     - BorgModuleCargo
+    - BorgModuleMining #STARLIGHT
 
   defaultModules:
+  - BorgModulePrying
   - BorgModuleTool
   - BorgModuleMining
   - BorgModuleTraversal
@@ -92,6 +107,7 @@
   radioChannels:
   - Supply
   - Science
+  - Expedition #Starlight
 
   # Visual
   inventoryTemplateId: borgTall
@@ -125,7 +141,8 @@
     - BorgModuleJanitor
 
   defaultModules:
-  - BorgModuleTool
+  - BorgModulePrying
+  - BorgModuleTool # Starlight
   - BorgModuleCleaning
   - BorgModuleCustodial
 
@@ -158,7 +175,8 @@
     - BorgModuleMedical
 
   defaultModules:
-  - BorgModuleTool
+  - BorgModulePrying
+  - BorgModuleTool # Starlight
   - BorgModuleChemical
   - BorgModuleTopicals
   - BorgModuleRescue
@@ -172,9 +190,11 @@
   - type: ShowHealthBars
     damageContainers:
     - Biological
+    - Hybrid # Starlight, Protogens
   - type: ShowHealthIcons
     damageContainers:
     - Biological
+    - Hybrid # Starlight, Protogens
 
   # Visual
   inventoryTemplateId: borgDutch
@@ -212,16 +232,17 @@
     - BorgModuleService
 
   defaultModules:
-  - BorgModuleTool
+  - BorgModulePrying
+  - BorgModuleTool # Starlight
   - BorgModuleMusique
-  # Starlight start 
+  # Starlight start
   - BorgModuleBartending
   - BorgModuleCooking
   - BorgModuleBotany
   - BorgModuleBooks
   # Starlight end
   - BorgModuleClowning
-  
+
   radioChannels:
   - Science
   - Service
